@@ -1,4 +1,5 @@
 const puppeteer = require("puppeteer");
+const cheerio = require('cheerio');
 
 (async () => {
   const browser = await puppeteer.launch();
@@ -9,19 +10,19 @@ const puppeteer = require("puppeteer");
   const allLinks = await page.$$eval('td > a.recipe-btn', options => {
     return options.map(option => 'https://tka.nutridata.ee' + option.getAttribute('href'));
   });
-  console.log(allLinks);
 
   for (const el of allLinks) {
-    await page.goto(el);
-    await page.waitForSelector('div[id=ngb-tab-2-panel]');
-    console.log(typeof(page));
-    const tab = await page.$eval('div[id=ngb-tab-2-panel]', e => e.innerHTML);
-    console.log(typeof(tab));
-    const content = await tab.$$eval('td.text-right.ng-star-inserted > span', options => {
-      return options.map(option => option.innerText.replace(' ', ""));
+    await page.goto(el, {waitUntil: 'networkidle2'});
+    // await page.waitForSelector('div[id=ngb-tab-2-panel]');
+    const content = await (await page.$eval('div[id=ngb-tab-2-panel]', e => e.innerHTML));
+    const $ = cheerio.load(content)
+    const values = []
+    $('td.text-right.ng-star-inserted > span').each(function (i, header) {
+      const text = $(header).text().replace(/[^\d,]/g, '');
+      values.push(parseFloat(text.replace(',', '.')));
     });
-    console.log(content, typeof(content));
-    break 
+    console.log(values);
+    break
   }
 
 
